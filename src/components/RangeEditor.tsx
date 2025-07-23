@@ -410,12 +410,48 @@ export const RangeEditor = ({ isMobileMode = false }: RangeEditorProps) => {
   };
 
   const deleteActionButton = (id: string) => {
-    if (actionButtons.length > 1) {
-      setActionButtons(prev => prev.filter(button => button.id !== id));
-      if (activeAction === id) {
-        setActiveAction(actionButtons[0].id);
-      }
+    if (actionButtons.length <= 1) {
+      return; // Prevent deleting the last action button.
     }
+
+    const buttonToDelete = actionButtons.find(b => b.id === id);
+    if (!buttonToDelete) return;
+
+    // Collect all action IDs that need to be deleted.
+    // This includes the selected action and any weighted actions that depend on it if it's a simple action.
+    const idsToDelete = new Set<string>([id]);
+    if (buttonToDelete.type === 'simple') {
+      actionButtons.forEach(btn => {
+        if (btn.type === 'weighted' && (btn.action1Id === id || btn.action2Id === id)) {
+          idsToDelete.add(btn.id);
+        }
+      });
+    }
+
+    // Reset hands that use any of the deleted actions across all ranges.
+    setFolders(prevFolders =>
+      prevFolders.map(folder => ({
+        ...folder,
+        ranges: folder.ranges.map(range => {
+          const newHands = { ...range.hands };
+          Object.entries(newHands).forEach(([hand, actionId]) => {
+            if (idsToDelete.has(actionId)) {
+              delete newHands[hand]; // This effectively reverts it to "fold"
+            }
+          });
+          return { ...range, hands: newHands };
+        })
+      }))
+    );
+
+    // Now, remove the button(s) and update the active action if needed.
+    setActionButtons(prevButtons => {
+      const updatedButtons = prevButtons.filter(button => !idsToDelete.has(button.id));
+      if (idsToDelete.has(activeAction)) {
+        setActiveAction(updatedButtons[0]?.id || '');
+      }
+      return updatedButtons;
+    });
   };
 
   const onHandSelect = (hand: string, mode: 'select' | 'deselect') => {
