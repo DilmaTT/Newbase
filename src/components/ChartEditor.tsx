@@ -428,22 +428,24 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
   };
 
   const handleMaximizeCanvas = () => {
-    if (!canvasRef.current) return;
+    if (isMobileMode) {
+      // For mobile, use the full screen dimensions, including the device's UI
+      setCanvasWidth(window.screen.width);
+      setCanvasHeight(window.screen.height);
+    } else {
+      // For desktop, use the available container space
+      if (!canvasRef.current) return;
+      const parentElement = canvasRef.current.parentElement;
+      if (!parentElement) return;
 
-    const parentElement = canvasRef.current.parentElement;
-    if (!parentElement) return;
+      const newWidth = parentElement.clientWidth;
+      const canvasTopOffset = canvasRef.current.getBoundingClientRect().top;
+      const bottomPadding = 24; // Corresponds to p-6 from the main container
+      const newHeight = window.innerHeight - canvasTopOffset - bottomPadding;
 
-    // Width is the full client width of the container holding the canvas
-    const newWidth = parentElement.clientWidth;
-
-    // Height is the window height minus the space above the canvas and some padding at the bottom
-    const canvasTopOffset = canvasRef.current.getBoundingClientRect().top;
-    const bottomPadding = 24; // Corresponds to p-6 from the main container
-    const newHeight = window.innerHeight - canvasTopOffset - bottomPadding;
-
-    setCanvasWidth(Math.floor(newWidth));
-    // Ensure a minimum height
-    setCanvasHeight(Math.floor(newHeight > 100 ? newHeight : 100));
+      setCanvasWidth(Math.floor(newWidth));
+      setCanvasHeight(Math.floor(newHeight > 100 ? newHeight : 100));
+    }
   };
 
   return (
@@ -468,14 +470,14 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
         {/* Controls row */}
         <div className={cn(
           "flex items-center gap-4 mb-6",
-          isMobileMode && "flex-wrap gap-y-2" // Apply flex-wrap and vertical gap on mobile
+          isMobileMode && "flex-col items-start gap-y-4" // On mobile, stack vertically and align left
         )}>
           <Button onClick={handleAddButton} className="flex items-center gap-2 h-7">
             <Plus className="h-4 w-4" />
             Добавить кнопку
           </Button>
           
-          {/* Group for dimension controls that will wrap on mobile */}
+          {/* Group for dimension controls */}
           <div className="flex items-center gap-4">
             <Label htmlFor="canvasWidth" className="text-right">
               Ширина
