@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowLeft, Settings } from "lucide-react";
+import { Plus, ArrowLeft, Settings, Expand } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -60,12 +60,12 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
       id: String(Date.now()),
       name: "Новая кнопка",
       color: "#60A5FA",
-      linkedItem: allRanges.length > 0 ? allRanges[0].id : "",
+      linkedItem: allRanges.length > 0 ? allRanges[0].id : "label-only", // Default to label if no ranges
       x: 50,
       y: 50,
       width: 120, // Default width
       height: 40, // Default height
-      type: 'normal', // Default type for new buttons
+      type: allRanges.length > 0 ? 'normal' : 'label', // Default type
     };
     setButtons((prev) => [...prev, newButton]);
     setEditingButton(newButton);
@@ -399,6 +399,53 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
     onBackToCharts();
   };
 
+  const handleDimensionChange = (
+    value: string,
+    setter: React.Dispatch<React.SetStateAction<number>>
+  ) => {
+    // This allows the input to be cleared, resulting in NaN state, which is handled by the value prop
+    setter(parseInt(value, 10));
+  };
+
+  const handleDimensionBlur = (
+    currentValue: number,
+    setter: React.Dispatch<React.SetStateAction<number>>
+  ) => {
+    const minSize = 100;
+    if (isNaN(currentValue) || currentValue < minSize) {
+      setter(minSize);
+    }
+  };
+
+  const handleLinkedItemChange = (value: string) => {
+    setEditingButton(prev => {
+      if (!prev) return null;
+      if (value === 'label-only') {
+        return { ...prev, linkedItem: 'label-only', type: 'label' };
+      }
+      return { ...prev, linkedItem: value, type: 'normal' };
+    });
+  };
+
+  const handleMaximizeCanvas = () => {
+    if (!canvasRef.current) return;
+
+    const parentElement = canvasRef.current.parentElement;
+    if (!parentElement) return;
+
+    // Width is the full client width of the container holding the canvas
+    const newWidth = parentElement.clientWidth;
+
+    // Height is the window height minus the space above the canvas and some padding at the bottom
+    const canvasTopOffset = canvasRef.current.getBoundingClientRect().top;
+    const bottomPadding = 24; // Corresponds to p-6 from the main container
+    const newHeight = window.innerHeight - canvasTopOffset - bottomPadding;
+
+    setCanvasWidth(Math.floor(newWidth));
+    // Ensure a minimum height
+    setCanvasHeight(Math.floor(newHeight > 100 ? newHeight : 100));
+  };
+
   return (
     <div className={cn(
       "p-6",
@@ -418,36 +465,48 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
           </div>
         </div>
 
-        {/* New row for Add Button, Canvas size controls */}
-        <div className="flex items-center gap-4 mb-6"> {/* Added margin-bottom for spacing */}
+        {/* Controls row */}
+        <div className={cn(
+          "flex items-center gap-4 mb-6",
+          isMobileMode && "flex-wrap gap-y-2" // Apply flex-wrap and vertical gap on mobile
+        )}>
           <Button onClick={handleAddButton} className="flex items-center gap-2 h-7">
             <Plus className="h-4 w-4" />
             Добавить кнопку
           </Button>
-          <Label htmlFor="canvasWidth" className="text-right">
-            Ширина
-          </Label>
-          <Input
-            id="canvasWidth"
-            type="number"
-            value={canvasWidth}
-            onChange={(e) => setCanvasWidth(parseInt(e.target.value) || 0)}
-            className="w-20 h-7"
-            min="100"
-            maxLength={4}
-          />
-          <Label htmlFor="canvasHeight" className="text-right">
-            Высота
-          </Label>
-          <Input
-            id="canvasHeight"
-            type="number"
-            value={canvasHeight}
-            onChange={(e) => setCanvasHeight(parseInt(e.target.value) || 0)}
-            className="w-20 h-7"
-            min="100"
-            maxLength={4}
-          />
+          
+          {/* Group for dimension controls that will wrap on mobile */}
+          <div className="flex items-center gap-4">
+            <Label htmlFor="canvasWidth" className="text-right">
+              Ширина
+            </Label>
+            <Input
+              id="canvasWidth"
+              type="number"
+              value={isNaN(canvasWidth) ? '' : canvasWidth}
+              onChange={(e) => handleDimensionChange(e.target.value, setCanvasWidth)}
+              onBlur={() => handleDimensionBlur(canvasWidth, setCanvasWidth)}
+              className="w-20 h-7"
+              min="100"
+              maxLength={4}
+            />
+            <Label htmlFor="canvasHeight" className="text-right">
+              Высота
+            </Label>
+            <Input
+              id="canvasHeight"
+              type="number"
+              value={isNaN(canvasHeight) ? '' : canvasHeight}
+              onChange={(e) => handleDimensionChange(e.target.value, setCanvasHeight)}
+              onBlur={() => handleDimensionBlur(canvasHeight, setCanvasHeight)}
+              className="w-20 h-7"
+              min="100"
+              maxLength={4}
+            />
+            <Button variant="ghost" size="icon" onClick={handleMaximizeCanvas} title="Развернуть на весь экран">
+              <Expand className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         <div
@@ -524,28 +583,34 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
                   Привязать
                 </Label>
                 <Select
-                  value={editingButton?.linkedItem || ""}
-                  onValueChange={(value) => setEditingButton(prev => prev ? { ...prev, linkedItem: value } : null)}
-                  disabled={editingButton?.type === 'exit'} // Disable if it's an exit button
+                  value={editingButton?.type === 'label' ? 'label-only' : editingButton?.linkedItem || ""}
+                  onValueChange={handleLinkedItemChange}
+                  disabled={editingButton?.type === 'exit'}
                 >
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder={editingButton?.type === 'exit' ? "Выход из режима просмотра чарта" : "Выберите чарт/диапазон"} />
+                    <SelectValue placeholder={
+                      editingButton?.type === 'exit' 
+                        ? "Выход из режима просмотра чарта" 
+                        : editingButton?.type === 'label'
+                        ? "Только текстовое обозначение"
+                        : "Выберите чарт/диапазон"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     {editingButton?.type === 'exit' ? (
-                      // Assign a non-empty, unique value for the disabled exit item
                       <SelectItem value="exit-chart-placeholder" disabled>Выход из режима просмотра чарта</SelectItem>
                     ) : (
-                      allRanges.length === 0 ? (
-                        // Assign a non-empty, unique value for the disabled "no ranges" item
-                        <SelectItem value="no-ranges-available-placeholder" disabled>Нет доступных диапазонов</SelectItem>
-                      ) : (
-                        allRanges.map(range => (
+                      <>
+                        <SelectItem value="label-only">Только текстовое обозначение</SelectItem>
+                        {allRanges.map(range => (
                           <SelectItem key={range.id} value={range.id}>
                             {range.name}
                           </SelectItem>
-                        ))
-                      )
+                        ))}
+                        {allRanges.length === 0 && (
+                          <SelectItem value="no-ranges-available-placeholder" disabled>Нет доступных диапазонов</SelectItem>
+                        )}
+                      </>
                     )}
                   </SelectContent>
                 </Select>

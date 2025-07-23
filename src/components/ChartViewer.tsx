@@ -36,6 +36,10 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
       return;
     }
 
+    if (button.type === 'label') {
+      return; // Do nothing for label buttons
+    }
+
     const linkedRange = allRanges.find(range => range.id === button.linkedItem);
     if (linkedRange) {
       setDisplayedRange(linkedRange);
@@ -95,7 +99,10 @@ export const ChartViewer = ({ isMobileMode = false, chart, allRanges, onBackToCh
                     width: button.width,
                     height: button.height,
                   }}
-                  className="flex items-center justify-center rounded-md shadow-md text-white font-semibold cursor-pointer hover:opacity-90 transition-opacity z-20"
+                  className={cn(
+                    "flex items-center justify-center rounded-md shadow-md text-white font-semibold z-20",
+                    button.type !== 'label' && "cursor-pointer hover:opacity-90 transition-opacity"
+                  )}
                   onClick={() => handleButtonClick(button)}
                 >
                   {button.name}
