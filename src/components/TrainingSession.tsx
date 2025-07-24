@@ -335,14 +335,11 @@ export const TrainingSession = ({ training, onStop }: TrainingSessionProps) => {
       {/* Main training area */}
       <div className="flex-1 flex flex-col">
         {/* Mobile header */}
-        <div className="sm:hidden p-4 border-b bg-card">
-          <div className="flex items-center justify-between">
-            <div className="text-lg font-semibold">
+        <div className="sm:hidden p-2 border-b bg-card">
+          <div className="flex items-center justify-center">
+            <div className="text-base font-semibold">
               {currentRange.folderName} - {currentRange.name}
             </div>
-            <Button size="sm" variant="destructive" onClick={finishTraining}>
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </div>
 
@@ -388,10 +385,10 @@ export const TrainingSession = ({ training, onStop }: TrainingSessionProps) => {
                       <div className="absolute top-1/2 right-8 sm:right-12 transform -translate-y-1/2">
                         <Button
                           onClick={proceedToNext}
-                          className="bg-gray-500 hover:bg-gray-600 text-white w-12 h-12 sm:w-16 sm:h-16 rounded-lg shadow-xl border-2 border-gray-700"
+                          className="bg-gray-500 hover:bg-gray-600 text-white w-[45px] h-[45px] sm:w-[55px] sm:h-[55px] rounded-lg shadow-xl border-2 border-gray-700"
                           size="icon"
                         >
-                          <Play className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <Play className="h-5 w-5 sm:h-6 sm:w-6" />
                         </Button>
                       </div>
                     )}
