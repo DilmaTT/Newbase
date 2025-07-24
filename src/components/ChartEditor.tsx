@@ -428,25 +428,110 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
   };
 
   const handleMaximizeCanvas = () => {
-    if (isMobileMode) {
-      // For mobile, use the full screen dimensions, including the device's UI
-      setCanvasWidth(window.screen.width);
-      setCanvasHeight(window.screen.height);
-    } else {
-      // For desktop, use the available container space
-      if (!canvasRef.current) return;
-      const parentElement = canvasRef.current.parentElement;
-      if (!parentElement) return;
+    if (!canvasRef.current) return;
 
-      const newWidth = parentElement.clientWidth;
-      const canvasTopOffset = canvasRef.current.getBoundingClientRect().top;
-      const bottomPadding = 24; // Corresponds to p-6 from the main container
-      const newHeight = window.innerHeight - canvasTopOffset - bottomPadding;
+    const parentElement = canvasRef.current.parentElement;
+    if (!parentElement) return;
 
-      setCanvasWidth(Math.floor(newWidth));
-      setCanvasHeight(Math.floor(newHeight > 100 ? newHeight : 100));
-    }
+    // Width is the full client width of the container holding the canvas
+    const newWidth = parentElement.clientWidth;
+
+    // Height is the window height minus the space above the canvas and some padding at the bottom
+    const canvasTopOffset = canvasRef.current.getBoundingClientRect().top;
+    const bottomPadding = 24; // Corresponds to p-6 from the main container
+    const newHeight = window.innerHeight - canvasTopOffset - bottomPadding;
+
+    setCanvasWidth(Math.floor(newWidth));
+    // Ensure a minimum height
+    setCanvasHeight(Math.floor(newHeight > 100 ? newHeight : 100));
   };
+
+  const Controls = (
+    <div className={cn(
+      "flex items-center gap-4",
+      isMobileMode ? "flex-wrap gap-y-2 p-4 border-t bg-muted" : "mb-6"
+    )}>
+      <Button onClick={handleAddButton} className="flex items-center gap-2 h-7">
+        <Plus className="h-4 w-4" />
+        Добавить кнопку
+      </Button>
+      
+      {/* Group for dimension controls that will wrap on mobile */}
+      <div className="flex items-center gap-4">
+        <Label htmlFor="canvasWidth" className="text-right">
+          Ширина
+        </Label>
+        <Input
+          id="canvasWidth"
+          type="number"
+          value={isNaN(canvasWidth) ? '' : canvasWidth}
+          onChange={(e) => handleDimensionChange(e.target.value, setCanvasWidth)}
+          onBlur={() => handleDimensionBlur(canvasWidth, setCanvasWidth)}
+          className="w-20 h-7"
+          min="100"
+          maxLength={4}
+        />
+        <Label htmlFor="canvasHeight" className="text-right">
+          Высота
+        </Label>
+        <Input
+          id="canvasHeight"
+          type="number"
+          value={isNaN(canvasHeight) ? '' : canvasHeight}
+          onChange={(e) => handleDimensionChange(e.target.value, setCanvasHeight)}
+          onBlur={() => handleDimensionBlur(canvasHeight, setCanvasHeight)}
+          className="w-20 h-7"
+          min="100"
+          maxLength={4}
+        />
+        <Button variant="ghost" size="icon" onClick={handleMaximizeCanvas} title="Развернуть на весь экран">
+          <Expand className="h-5 w-5" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  const Canvas = (
+    <div
+      ref={canvasRef}
+      className="relative border-2 border-dashed border-muted-foreground rounded-lg bg-card flex items-center justify-center overflow-hidden"
+      style={{ width: canvasWidth, height: canvasHeight }} // Apply dynamic width and height
+    >
+      {buttons.length === 0 && (
+        <p className="text-muted-foreground">Рабочая область (холст)</p>
+      )}
+      {buttons.map((button) => (
+        <div
+          key={button.id}
+          style={{
+            backgroundColor: button.color,
+            position: 'absolute',
+            left: button.x,
+            top: button.y,
+            width: button.width, // Apply width
+            height: button.height, // Apply height
+            zIndex: activeButtonId === button.id ? 100 : 1, // Bring active button to front
+          }}
+          className="relative flex items-center justify-center rounded-md shadow-md text-white font-semibold group" // Added group for hover effects
+          onMouseDown={(e) => handleMouseDown(e, button)}
+          onTouchStart={(e) => handleTouchStart(e, button)}
+          onMouseMove={(e) => handleButtonMouseMove(e, button)}
+          onMouseLeave={handleButtonMouseLeave}
+        >
+          {button.name}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity settings-icon" // Added settings-icon class
+            onClick={(e) => handleSettingsClick(e, button)}
+            title="Настройки кнопки"
+          >
+            <Settings className="h-4 w-4 text-white" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className={cn(
@@ -467,89 +552,17 @@ export const ChartEditor = ({ isMobileMode = false, chart, onBackToCharts, onSav
           </div>
         </div>
 
-        {/* Controls row */}
-        <div className={cn(
-          "flex items-center gap-4 mb-6",
-          isMobileMode && "flex-col items-start gap-y-4" // On mobile, stack vertically and align left
-        )}>
-          <Button onClick={handleAddButton} className="flex items-center gap-2 h-7">
-            <Plus className="h-4 w-4" />
-            Добавить кнопку
-          </Button>
-          
-          {/* Group for dimension controls */}
-          <div className="flex items-center gap-4">
-            <Label htmlFor="canvasWidth" className="text-right">
-              Ширина
-            </Label>
-            <Input
-              id="canvasWidth"
-              type="number"
-              value={isNaN(canvasWidth) ? '' : canvasWidth}
-              onChange={(e) => handleDimensionChange(e.target.value, setCanvasWidth)}
-              onBlur={() => handleDimensionBlur(canvasWidth, setCanvasWidth)}
-              className="w-20 h-7"
-              min="100"
-              maxLength={4}
-            />
-            <Label htmlFor="canvasHeight" className="text-right">
-              Высота
-            </Label>
-            <Input
-              id="canvasHeight"
-              type="number"
-              value={isNaN(canvasHeight) ? '' : canvasHeight}
-              onChange={(e) => handleDimensionChange(e.target.value, setCanvasHeight)}
-              onBlur={() => handleDimensionBlur(canvasHeight, setCanvasHeight)}
-              className="w-20 h-7"
-              min="100"
-              maxLength={4}
-            />
-            <Button variant="ghost" size="icon" onClick={handleMaximizeCanvas} title="Развернуть на весь экран">
-              <Expand className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
-        <div
-          ref={canvasRef}
-          className="relative border-2 border-dashed border-muted-foreground rounded-lg bg-card flex items-center justify-center overflow-hidden"
-          style={{ width: canvasWidth, height: canvasHeight }} // Apply dynamic width and height
-        >
-          {buttons.length === 0 && (
-            <p className="text-muted-foreground">Рабочая область (холст)</p>
-          )}
-          {buttons.map((button) => (
-            <div
-              key={button.id}
-              style={{
-                backgroundColor: button.color,
-                position: 'absolute',
-                left: button.x,
-                top: button.y,
-                width: button.width, // Apply width
-                height: button.height, // Apply height
-                zIndex: activeButtonId === button.id ? 100 : 1, // Bring active button to front
-              }}
-              className="relative flex items-center justify-center rounded-md shadow-md text-white font-semibold group" // Added group for hover effects
-              onMouseDown={(e) => handleMouseDown(e, button)}
-              onTouchStart={(e) => handleTouchStart(e, button)}
-              onMouseMove={(e) => handleButtonMouseMove(e, button)}
-              onMouseLeave={handleButtonMouseLeave}
-            >
-              {button.name}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity settings-icon" // Added settings-icon class
-                onClick={(e) => handleSettingsClick(e, button)}
-                title="Настройки кнопки"
-              >
-                <Settings className="h-4 w-4 text-white" />
-              </Button>
-            </div>
-          ))}
-        </div>
+        {isMobileMode ? (
+          <>
+            {Canvas}
+            {Controls}
+          </>
+        ) : (
+          <>
+            {Controls}
+            {Canvas}
+          </>
+        )}
 
         <Dialog open={isButtonModalOpen} onOpenChange={setIsButtonModalOpen}>
           <DialogContent mobileFullscreen={isMobileMode}>
